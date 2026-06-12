@@ -9,6 +9,8 @@ with open("model.pkl", "rb") as f:
 with open("scaler.pkl", "rb") as f:
     scaler = pickle.load(f)
 
+FEATURE_ORDER = ["Time"] + [f"V{i}" for i in range(1, 29)] + ["Amount"]
+
 # ── Page config ───────────────────────────────────────────────────
 st.set_page_config(page_title="Fraud Detection App", page_icon="💳", layout="centered")
 
@@ -27,23 +29,24 @@ if mode == "Use sample transaction":
     st.write("Sample transaction (without label):")
     st.dataframe(sample.drop(columns=["Class"]))
     input_data = sample.drop(columns=["Class"])
+    input_data = input_data[FEATURE_ORDER]  # enforce correct order
     actual_label = sample["Class"].values[0]
 
 else:
     st.write("Enter transaction values:")
     col1, col2 = st.columns(2)
-    
+
     time_val = col1.number_input("Time", value=0.0)
     amount_val = col2.number_input("Amount", value=100.0)
-    
+
     v_values = {}
     cols = st.columns(4)
     for i in range(1, 29):
-        v_values[f"V{i}"] = cols[(i-1) % 4].number_input(f"V{i}", value=0.0, format="%.4f")
-    
-    input_data = pd.DataFrame([{**v_values, "Time": time_val, "Amount": amount_val}])
-    # reorder columns to match training order
-    input_data = input_data[[f"V{i}" for i in range(1,29)] + ["Time", "Amount"]]
+        v_values[f"V{i}"] = cols[(i - 1) % 4].number_input(f"V{i}", value=0.0, format="%.4f")
+
+    row = {**v_values, "Time": time_val, "Amount": amount_val}
+    input_data = pd.DataFrame([row])
+    input_data = input_data[FEATURE_ORDER]  # enforce correct order
     actual_label = None
 
 st.divider()
@@ -52,17 +55,18 @@ st.divider()
 if st.button("🔍 Predict", type="primary"):
     scaled_input = input_data.copy()
     scaled_input[["Amount", "Time"]] = scaler.transform(scaled_input[["Amount", "Time"]])
-    
+    scaled_input = scaled_input[FEATURE_ORDER]  # enforce order again after scaling
+
     prediction = model.predict(scaled_input)[0]
     probability = model.predict_proba(scaled_input)[0][1]
-    
+
     st.subheader("Result")
-    
+
     if prediction == 1:
         st.error(f"⚠️ FRAUD DETECTED — Confidence: {probability*100:.2f}%")
     else:
         st.success(f"✅ LEGITIMATE TRANSACTION — Fraud Probability: {probability*100:.2f}%")
-    
+
     if actual_label is not None:
         st.write(f"**Actual label in dataset:** {'Fraud' if actual_label == 1 else 'Legit'}")
 
