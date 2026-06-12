@@ -22,7 +22,7 @@ mode = st.radio("Choose input method:", ["Use sample transaction", "Enter custom
 
 if mode == "Use sample transaction":
     st.info("Using a random sample row from the dataset for demonstration.")
-    df = pd.read_csv("creditcard.csv")
+    df = pd.read_csv("sample_transactions.csv")
     sample = df.sample(1)
     st.write("Sample transaction (without label):")
     st.dataframe(sample.drop(columns=["Class"]))
